@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Accept Cookies",
-  "description": "Accepts cookie policies so you can get back to browsing. Icon designed by FreePik.",
-  "version": "0.02",
+  "description": "Accepts cookie consent banners so you can get back to browsing. Collects zero data.",
+  "version": "0.03",
   "content_scripts": [
     {
       "js":["content.js"],

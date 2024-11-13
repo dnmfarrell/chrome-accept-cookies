@@ -2,12 +2,12 @@ Accept Cookies
 ==============
 ![](icon128.png)
 
-A Chrome extension to automatically accept cookie policies so you can get back to browsing. Collects zero data.
+A Chrome extension to automatically accept cookie consent banners so you can get back to browsing. Collects zero data.
 
 Cookie icon designed by FreePik.
 
-What's a cookie policy?
------------------------
+What's a cookie consent banner?
+--------------------------------
 These annoying popups:
 
 ![](acceptcookies.png)
@@ -28,7 +28,7 @@ Technical details
 - Uses mutation observers to efficiently react to DOM changes.
 - Overrides `Element.attachShadow` to search shadow DOMs.
 - Uses a service worker with `chrome.webNavigation.onCommitted.addListener` to override `.attachShadow` before inline code runs.
-- Runs in all frames so cookie policies loaded in iFrames are detected.
+- Runs in all frames so cookie consent banners loaded in iFrames are detected.
 
 
 Installation
