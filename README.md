@@ -4,6 +4,7 @@ Accept Cookies
 
 A Chrome extension to automatically accept cookie policies so you can get back to browsing. Collects zero data.
 
+Cookie icon designed by FreePik.
 
 What's a cookie policy?
 -----------------------
