@@ -2,7 +2,7 @@ Accept Cookies
 ==============
 ![](icon128.png)
 
-A Chrome extension to automatically accept cookie policies so you can get back to browsing.Collects zero data.
+A Chrome extension to automatically accept cookie policies so you can get back to browsing. Collects zero data.
 
 
 What's a cookie policy?
@@ -22,7 +22,7 @@ Rather than hardcoding rules for every website, Accept Cookies uses an algorithm
 4. Clicks the accept button closest to a cookie element.
 
 
-Technical Details
+Technical details
 -----------------
 - Uses mutation observers to efficiently react to DOM changes.
 - Overrides `Element.attachShadow` to search shadow DOMs.
@@ -38,3 +38,7 @@ Installation
 4. Click the Load unpacked button.
 5. Select the downloaded repo directory.
 
+
+See also
+--------
+[I Still Don't Care About Cookies](https://github.com/OhMyGuus/I-Still-Dont-Care-About-Cookies).
