@@ -1,4 +1,6 @@
-Element.prototype._attachShadow = Element.prototype.attachShadow;
+if (typeof acceptCookiesOrigAttachShadow === 'undefined') {
+  var acceptCookiesOrigAttachShadow = Element.prototype.attachShadow;
+}
 Element.prototype.attachShadow = function (options = {}) {
   const element = this;
   try {
@@ -13,7 +15,7 @@ Element.prototype.attachShadow = function (options = {}) {
       document.dispatchEvent(attachShadow);
     }, 500);
     options.mode = "open";
-    return this._attachShadow(options);
+    return acceptCookiesOrigAttachShadow.call(element, options);
   } catch (e) {
     console.log('caught error:', e);
   }
