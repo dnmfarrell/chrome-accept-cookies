@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Accept Cookies",
   "description": "Accepts cookie consent banners so you can get back to browsing. Collects zero data.",
-  "version": "0.04",
+  "version": "0.05",
   "content_scripts": [
     {
       "js":["content.js"],

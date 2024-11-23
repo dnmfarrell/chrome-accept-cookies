@@ -1,22 +1,21 @@
 const cachedNodes = new Set();
+const searchTimeout = 60000;
+const batchSize     = 100;
+const batchTimeout  = 50;
 let distancePairs = [];
 let searchNodes   = [];
 let cookieNodes   = [];
-let watchedNodes  = new Set();
 let observers     = [];
 let buttonSet     = new Set();
+let watchedNodes  = new Set();
 let halt          = false;
+let minDistance   = -1;
 
-addEventListener("DOMContentLoaded", (e) => main());
-document.addEventListener("attachShadow", (e) => {
-  const nodes = document.body.querySelectorAll(e.detail);
-  nodes.forEach(element => {
-    if (element.shadowRoot) {
-      observe(element.shadowRoot);
-      searchNodes.push(element.shadowRoot);
-    }
+function yieldToMain () {
+  return new Promise(resolve => {
+    setTimeout(resolve, 0);
   });
-});
+}
 
 function nodeMentionsCookie(node) {
   if (halt) {
@@ -32,7 +31,7 @@ function nodeMentionsCookie(node) {
       cachedNodes.add(e);
     }
     if (e.shadowRoot) {
-      nodeMentionsCookie(e.shadowRoot);
+      searchNodes.push(e.shadowRoot);
     }
   }
 }
@@ -54,19 +53,17 @@ function findAcceptButtons(node) {
   return buttons;
 }
 
+const acceptPattern = /^ *((accept|allow)( +all)?( +cookies)?|(i +)?agree|(accept|agree) +(&|and) +continue) *$/im;
+
 function looksLikeAccept(button) {
-  const text = button.textContent.toLowerCase();
-  const aria = button.ariaLabel?.toLowerCase() ?? '';
-  return text.includes("accept")
-         || text.includes("allow")
-         || text.includes("agree")
-         || aria.includes("accept")
-         || aria.includes("allow")
-         || aria.includes("agree")
-  ;
+  const text = button.textContent;
+  return acceptPattern.test(text);
 }
 
 function commonAncestorDistances(root, e, es) {
+  if (halt) {
+    return;
+  }
   const distances = [];
   const leftAncestors = path(root, e);
   if (leftAncestors.length == 0) { // not in DOM
@@ -122,20 +119,23 @@ async function search() {
   if (halt) {
     return;
   }
-  // console.log('Searching nodes: ', searchNodes);
-  searchNodes.forEach(n => {
-    nodeMentionsCookie(n);
-  });
+  for (let i = 0; i < searchNodes.length; i++) {
+    nodeMentionsCookie(searchNodes[i]);
+    if (i % batchSize === 0) {
+      await yieldToMain();
+    }
+  }
   searchNodes = [];
-  // console.log('Nodes mentioning cookies: ', cookieNodes);
-  cookieNodes.forEach(m => {
+  for (let i = 0; i < cookieNodes.length; i++) {
+    const m = cookieNodes[i];
     buttons = findAcceptButtons(m.node);
     commonAncestorDistances(m.node, m.mentionsCookie, buttons);
-  });
+    if (i % batchSize === 0) {
+      await yieldToMain();
+    }
+  }
   cookieNodes = [];
   distancePairs.sort((a,b) => a.distance - b.distance);
-  // console.log('distancePairs', distancePairs);
-  let minDistance = -1;
   for (let p of distancePairs) {
     if (minDistance == -1 && p.element.parentNode) { // still in DOM
       minDistance = p.distance;
@@ -145,11 +145,13 @@ async function search() {
     buttonSet.add(p.element);
   }
   distancePairs = [];
-  // console.log('buttons:', buttonSet);
-  for (let b of buttonSet) {
+  while (buttonSet.size > 0) {
+    const b = buttonSet.values().next().value;
+    buttonSet.delete(b);
     if (b.parentNode) { // still in DOM
-      // console.log('clicking cookie policy button:', b);
+      console.log("accept-cookies: clicking", b);
       b.click();
+      break;
     }
   }
 }
@@ -189,22 +191,33 @@ function observe(targetNode) {
 }
 
 function main() {
-  // console.log("looking for cookie policy windows");
+  console.log('accept-cookies: starting');
+  document.addEventListener("acceptCookiesAttachShadow", (e) => {
+    const nodes = document.body.querySelectorAll(e.detail);
+    nodes.forEach(element => {
+      if (element.shadowRoot) {
+        observe(element.shadowRoot);
+        searchNodes.push(element.shadowRoot);
+      }
+    });
+  });
+  window.dispatchEvent(new CustomEvent('acceptCookiesReady'));
   const targetNode = document.body;
   observe(targetNode);
   const timeout = () => {
+    console.log('accept-cookies: timeout');
     halt = true;
     observers.forEach(o => o.disconnect());
-    // console.log('timing out search');
   };
+  setTimeout(timeout, searchTimeout);
   searchNodes.push(targetNode);
-  setTimeout(timeout, 60000);
-  const keepSearching = () => {
+  const keepSearching = async () => {
     if (halt) {
       return;
     }
-    search();
-    setTimeout(keepSearching,2000);
+    await search();
+    setTimeout(keepSearching,batchTimeout);
   };
   keepSearching();
 }
+addEventListener("DOMContentLoaded", (e) => main());
