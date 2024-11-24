@@ -1,15 +1,15 @@
 const cachedNodes = new Set();
 const searchTimeout = 60000;
-const batchSize     = 100;
+const batchSize     = 50;
 const batchTimeout  = 50;
 let distancePairs = [];
 let searchNodes   = [];
 let cookieNodes   = [];
+let clickQueue   = [];
 let observers     = [];
 let buttonSet     = new Set();
 let watchedNodes  = new Set();
 let halt          = false;
-let minDistance   = -1;
 
 function yieldToMain () {
   return new Promise(resolve => {
@@ -137,22 +137,34 @@ async function search() {
   cookieNodes = [];
   distancePairs.sort((a,b) => a.distance - b.distance);
   for (let p of distancePairs) {
-    if (minDistance == -1 && p.element.parentNode) { // still in DOM
-      minDistance = p.distance;
-    } else if (minDistance < p.distance) {
-      break;
+    if (!buttonSet.has(p.element)) {
+      buttonSet.add(p.element);
+      p.clicks = 0;
+      clickQueue.push(p);
     }
-    buttonSet.add(p.element);
   }
+  clickQueue.sort((a,b) => a.distance - b.distance);
   distancePairs = [];
-  while (buttonSet.size > 0) {
-    const b = buttonSet.values().next().value;
-    buttonSet.delete(b);
-    if (b.parentNode) { // still in DOM
-      console.log("accept-cookies: clicking", b);
-      b.click();
-      break;
-    }
+}
+
+async function click() {
+  if (clickQueue.length === 0) {
+    return;
+  }
+  const clickTarget = clickQueue[0];
+  if (!clickTarget.element.parentNode) {
+    console.log("accept-cookies: button has disappeared, halting");
+    halt = true;
+    return;
+  }
+  if (clickTarget.clicks < 3) {
+    console.log("accept-cookies: clicking", clickTarget.clicks, clickTarget.element);
+    clickTarget.clicks++;
+    clickTarget.element.click();
+    return;
+  } else {
+    clickQueue.shift();
+    return click();
   }
 }
 
@@ -193,13 +205,17 @@ function observe(targetNode) {
 function main() {
   console.log('accept-cookies: starting');
   document.addEventListener("acceptCookiesAttachShadow", (e) => {
-    const nodes = document.body.querySelectorAll(e.detail);
-    nodes.forEach(element => {
-      if (element.shadowRoot) {
-        observe(element.shadowRoot);
-        searchNodes.push(element.shadowRoot);
-      }
-    });
+    try {
+      const nodes = document.body.querySelectorAll(e.detail);
+      nodes.forEach(element => {
+        if (element.shadowRoot) {
+          observe(element.shadowRoot);
+          searchNodes.push(element.shadowRoot);
+        }
+      });
+    } catch (e) {
+      console.log('accept-cookies: caught error querying shadowDOM', e);
+    }
   });
   window.dispatchEvent(new CustomEvent('acceptCookiesReady'));
   const targetNode = document.body;
@@ -216,6 +232,7 @@ function main() {
       return;
     }
     await search();
+    click();
     setTimeout(keepSearching,batchTimeout);
   };
   keepSearching();
