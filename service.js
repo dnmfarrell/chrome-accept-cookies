@@ -1,16 +1,17 @@
-chrome.webNavigation.onCommitted.addListener(details => {
-  if (details.url.startsWith("http")
-      && !details.url.includes("chrome.google.com")
-      && !details.url.includes("chromewebstore.google.com")
+chrome.webNavigation.onCommitted.addListener((details) => {
+  if (
+    details.url.startsWith("http") &&
+    !details.url.includes("chrome.google.com") &&
+    !details.url.includes("chromewebstore.google.com")
   ) {
     chrome.scripting.executeScript({
-      target:{
+      target: {
         tabId: details.tabId,
-        allFrames : true
+        allFrames: true,
       },
-      world: 'MAIN',
-      files: ['inject.js'],
-      injectImmediately: true
+      world: "MAIN",
+      files: ["inject.js"],
+      injectImmediately: true,
     });
   }
 });

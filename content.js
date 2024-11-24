@@ -1,18 +1,18 @@
 const cachedNodes = new Set();
 const searchTimeout = 60000;
-const batchSize     = 50;
-const batchTimeout  = 50;
+const batchSize = 50;
+const batchTimeout = 50;
 let distancePairs = [];
-let searchNodes   = [];
-let cookieNodes   = [];
-let clickQueue   = [];
-let observers     = [];
-let buttonSet     = new Set();
-let watchedNodes  = new Set();
-let halt          = false;
+let searchNodes = [];
+let cookieNodes = [];
+let clickQueue = [];
+let observers = [];
+let buttonSet = new Set();
+let watchedNodes = new Set();
+let halt = false;
 
-function yieldToMain () {
-  return new Promise(resolve => {
+function yieldToMain() {
+  return new Promise((resolve) => {
     setTimeout(resolve, 0);
   });
 }
@@ -21,13 +21,13 @@ function nodeMentionsCookie(node) {
   if (halt) {
     return;
   }
-  const allElements = node.querySelectorAll('*:not(script)');
+  const allElements = node.querySelectorAll("*:not(script)");
   for (let e of allElements) {
     if (halt) {
       break;
     }
     if (e.textContent.toLowerCase().includes("cookie") && !cachedNodes.has(e)) {
-      cookieNodes.push({ node:node, mentionsCookie:e });
+      cookieNodes.push({ node: node, mentionsCookie: e });
       cachedNodes.add(e);
     }
     if (e.shadowRoot) {
@@ -53,7 +53,8 @@ function findAcceptButtons(node) {
   return buttons;
 }
 
-const acceptPattern = /^ *((accept|allow)( +all)?( +cookies)?|(i +)?agree|(accept|agree) +(&|and) +continue) *$/im;
+const acceptPattern =
+  /^ *((accept|allow)( +all)?( +cookies)?|(i +)?agree|(accept|agree) +(&|and) +continue) *$/im;
 
 function looksLikeAccept(button) {
   const text = button.textContent;
@@ -66,7 +67,8 @@ function commonAncestorDistances(root, e, es) {
   }
   const distances = [];
   const leftAncestors = path(root, e);
-  if (leftAncestors.length == 0) { // not in DOM
+  if (leftAncestors.length == 0) {
+    // not in DOM
     return;
   }
   for (let e1 of es) {
@@ -74,8 +76,9 @@ function commonAncestorDistances(root, e, es) {
       break;
     }
     let d = commonAncestorDistance(leftAncestors, e, e1);
-    if (d > -1) { // not in DOM
-      distancePairs.push({element:e1,distance:d});
+    if (d > -1) {
+      // not in DOM
+      distancePairs.push({ element: e1, distance: d });
     }
   }
 }
@@ -85,7 +88,8 @@ function commonAncestorDistance(path, e, e1) {
   let distance = 0;
   while (true) {
     let pe = currentNode.parentNode;
-    if (pe == null) { // not in DOM
+    if (pe == null) {
+      // not in DOM
       return -1;
     }
     const index = path.indexOf(pe);
@@ -106,7 +110,8 @@ function path(root, e) {
     if (pe == root) {
       path.push(root);
       break;
-    } else if (pe == null) { // not in DOM
+    } else if (pe == null) {
+      // not in DOM
       return [];
     }
     path.push(currentNode);
@@ -135,7 +140,7 @@ async function search() {
     }
   }
   cookieNodes = [];
-  distancePairs.sort((a,b) => a.distance - b.distance);
+  distancePairs.sort((a, b) => a.distance - b.distance);
   for (let p of distancePairs) {
     if (!buttonSet.has(p.element)) {
       buttonSet.add(p.element);
@@ -143,7 +148,7 @@ async function search() {
       clickQueue.push(p);
     }
   }
-  clickQueue.sort((a,b) => a.distance - b.distance);
+  clickQueue.sort((a, b) => a.distance - b.distance);
   distancePairs = [];
 }
 
@@ -158,7 +163,11 @@ async function click() {
     return;
   }
   if (clickTarget.clicks < 3) {
-    console.log("accept-cookies: clicking", clickTarget.clicks, clickTarget.element);
+    console.log(
+      "accept-cookies: clicking",
+      clickTarget.clicks,
+      clickTarget.element,
+    );
     clickTarget.clicks++;
     clickTarget.element.click();
     return;
@@ -169,24 +178,24 @@ async function click() {
 }
 
 function checkMutation(mutationsList, observer) {
-    if (halt) {
-      observer.disconnect();
-      return;
-    }
-    for (let mutation of mutationsList) {
-      if (mutation.type === 'childList') {
-        mutation.addedNodes.forEach(n => {
-          if (n instanceof Element && n.tagName !== 'SCRIPT') {
-            searchNodes.push(n);
-            if (n.shadowRoot) {
-              observe(n.shadowRoot);
-              searchNodes.push(n.shadowRoot);
-            }
+  if (halt) {
+    observer.disconnect();
+    return;
+  }
+  for (let mutation of mutationsList) {
+    if (mutation.type === "childList") {
+      mutation.addedNodes.forEach((n) => {
+        if (n instanceof Element && n.tagName !== "SCRIPT") {
+          searchNodes.push(n);
+          if (n.shadowRoot) {
+            observe(n.shadowRoot);
+            searchNodes.push(n.shadowRoot);
           }
-        });
-      }
+        }
+      });
     }
   }
+}
 
 function observe(targetNode) {
   if (watchedNodes.has(targetNode)) {
@@ -194,36 +203,36 @@ function observe(targetNode) {
   }
   const observer = new MutationObserver(checkMutation);
   const observerOptions = {
-        childList: true,
-        subtree: true
-      };
+    childList: true,
+    subtree: true,
+  };
   observer.observe(targetNode, observerOptions);
   observers.push(observer);
   watchedNodes.add(targetNode);
 }
 
 function main() {
-  console.log('accept-cookies: starting');
+  console.log("accept-cookies: starting");
   document.addEventListener("acceptCookiesAttachShadow", (e) => {
     try {
       const nodes = document.body.querySelectorAll(e.detail);
-      nodes.forEach(element => {
+      nodes.forEach((element) => {
         if (element.shadowRoot) {
           observe(element.shadowRoot);
           searchNodes.push(element.shadowRoot);
         }
       });
     } catch (e) {
-      console.log('accept-cookies: caught error querying shadowDOM', e);
+      console.log("accept-cookies: caught error querying shadowDOM", e);
     }
   });
-  window.dispatchEvent(new CustomEvent('acceptCookiesReady'));
+  window.dispatchEvent(new CustomEvent("acceptCookiesReady"));
   const targetNode = document.body;
   observe(targetNode);
   const timeout = () => {
-    console.log('accept-cookies: timeout');
+    console.log("accept-cookies: timeout");
     halt = true;
-    observers.forEach(o => o.disconnect());
+    observers.forEach((o) => o.disconnect());
   };
   setTimeout(timeout, searchTimeout);
   searchNodes.push(targetNode);
@@ -233,7 +242,7 @@ function main() {
     }
     await search();
     click();
-    setTimeout(keepSearching,batchTimeout);
+    setTimeout(keepSearching, batchTimeout);
   };
   keepSearching();
 }
